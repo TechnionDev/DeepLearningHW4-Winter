@@ -105,53 +105,39 @@ def part2_vae_hyperparams():
 
 part2_q1 = r"""
 **Your answer:**
-
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+The sigma^2 is used for regularization purposes - std equal to one. the purpose of this regularization is
+to be applied on the data term vs. the Kullback-Liebler divergence loss. by adding this regularization we 
+encouraging or discouraging the loss in order to minimize the distance between the original image and its enc-dec.
 """
 
 part2_q2 = r"""
 **Your answer:**
+1. the first term (the data term) represents the distance  between an original encoding of a specific image, to 
+ the decoding-encoding output of that image.it would be minimized when the image corresponds directly
+to the decoding of its encoding.
 
+the second part correlates to the distance of the probability distribution of the encoder vs, the normal gaussian distribution
+which we assume is the latent space z. 
+this part of the equations will help us sample from the latent space Z and generate fake images.
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+2. the latent space dist would be trained to be closer to the normal gaussian distribution, therefore, creating a more 
+"meaningful" encoded results such that the decoder would get a more meaningful data space it can train on.
+3. the benefits are that our latent space will generate a more meaningful  space of distribution for our decoder model.
 """
 
 part2_q3 = r"""
 **Your answer:**
-
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+modeling the similarity of unknown results to the spesipic problem domain the hard, and there is no easy way to do so.
+instead our goal should be to model the probability of a result to be as real as possible - 
+and by doing that, this would maximise the evidence distribution.
 """
 
 part2_q4 = r"""
 **Your answer:**
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+as we know, the value of sigma2 should be between 0 and 1.
+but due to vanishing gradients we would encounter with numerical problems - so in order to ensure that the 
+value of sigma2 would be in the correct range - we are using log function; that gives us values of minus inf to 0.
 
 """
 
