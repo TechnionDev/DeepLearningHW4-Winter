@@ -8,7 +8,7 @@ from torch import Tensor
 from typing import Any, Tuple, Callable, Optional, cast
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-
+import pathlib
 from cs236781.train_results import FitResult, BatchResult, EpochResult
 
 
@@ -23,7 +23,7 @@ class Trainer(abc.ABC):
     """
 
     def __init__(
-        self, model: nn.Module, device: Optional[torch.device] = None,
+            self, model: nn.Module, device: Optional[torch.device] = None,
     ):
         """
         Initialize the trainer.
@@ -37,15 +37,15 @@ class Trainer(abc.ABC):
             model.to(self.device)
 
     def fit(
-        self,
-        dl_train: DataLoader,
-        dl_test: DataLoader,
-        num_epochs: int,
-        checkpoints: str = None,
-        early_stopping: int = None,
-        print_every: int = 1,
-        post_epoch_fn: Callable = None,
-        **kw,
+            self,
+            dl_train: DataLoader,
+            dl_test: DataLoader,
+            num_epochs: int,
+            checkpoints: str = None,
+            early_stopping: int = None,
+            print_every: int = 1,
+            post_epoch_fn: Callable = None,
+            **kw,
     ) -> FitResult:
         """
         Trains the model for multiple epochs with a given training set,
@@ -62,7 +62,76 @@ class Trainer(abc.ABC):
         :param post_epoch_fn: A function to call after each epoch completes.
         :return: A FitResult object containing train and test losses per epoch.
         """
+        actual_num_epochs = 0
+        train_loss, train_acc, test_loss, test_acc = [], [], [], []
+        print(f"device is {self.device}")
+        best_acc = None
+        epochs_without_improvement = 0
 
+        checkpoint_filename = None
+        if checkpoints is not None:
+            checkpoint_filename = f"{checkpoints}.pt"
+            pathlib.Path(os.path.dirname(checkpoint_filename)).mkdir(exist_ok=True)
+            if os.path.isfile(checkpoint_filename):
+                print(f"*** Loading checkpoint file {checkpoint_filename}")
+                saved_state = torch.load(checkpoint_filename, map_location=self.device)
+                best_acc = saved_state.get("best_acc", best_acc)
+                epochs_without_improvement = saved_state.get(
+                    "ewi", epochs_without_improvement
+                )
+                self.model.load_state_dict(saved_state["model_state"])
+
+        for epoch in range(num_epochs):
+            save_checkpoint = False
+            verbose = False  # pass this to train/test_epoch.
+            if epoch % print_every == 0 or epoch == num_epochs - 1:
+                verbose = True
+            self._print(f"--- EPOCH {epoch + 1}/{num_epochs} ---", verbose)
+
+            # TODO:
+            #  Train & evaluate for one epoch
+            #  - Use the train/test_epoch methods.
+            #  - Save losses and accuracies in the lists above.
+            #  - Implement early stopping. This is a very useful and
+            #    simple regularization technique that is highly recommended.
+            # ====== YOUR CODE: ======
+            actual_num_epochs = epoch
+            train_result = self.train_epoch(dl_train, verbose=verbose, **kw)
+            train_loss += train_result.losses
+            train_acc += [train_result.accuracy]
+            test_result = self.test_epoch(dl_test, verbose=verbose, **kw)
+            test_loss += test_result.losses
+            test_acc += [test_result.accuracy]
+
+            if best_acc is None or best_acc < test_result.accuracy:
+                best_acc = test_result.accuracy
+                epochs_without_improvement = 0
+                save_checkpoint = True
+            else:
+                epochs_without_improvement += 1
+                save_checkpoint = False
+            if early_stopping:
+                if epochs_without_improvement >= early_stopping:
+                    break
+            # ========================
+
+            # Save model checkpoint if requested
+            if save_checkpoint and checkpoint_filename is not None:
+                saved_state = dict(
+                    best_acc=best_acc,
+                    ewi=epochs_without_improvement,
+                    model_state=self.model.state_dict(),
+                )
+                torch.save(saved_state, checkpoint_filename)
+                print(
+                    f"*** Saved checkpoint {checkpoint_filename} " f"at epoch {epoch + 1}"
+                )
+
+            if post_epoch_fn:
+                post_epoch_fn(epoch, train_result, test_result, verbose)
+
+        return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
+        """
         actual_num_epochs = 0
         epochs_without_improvement = 0
 
@@ -104,6 +173,7 @@ class Trainer(abc.ABC):
                 post_epoch_fn(epoch, train_result, test_result, verbose)
 
         return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
+        """
 
     def save_checkpoint(self, checkpoint_filename: str):
         """
@@ -169,10 +239,10 @@ class Trainer(abc.ABC):
 
     @staticmethod
     def _foreach_batch(
-        dl: DataLoader,
-        forward_fn: Callable[[Any], BatchResult],
-        verbose=True,
-        max_batches=None,
+            dl: DataLoader,
+            forward_fn: Callable[[Any], BatchResult],
+            verbose=True,
+            max_batches=None,
     ) -> EpochResult:
         """
         Evaluates the given forward-function on batches from the given
@@ -224,11 +294,11 @@ class Trainer(abc.ABC):
 
 class VAETrainer(Trainer):
     def __init__(
-        self,
-        model: nn.Module,
-        loss_fn: nn.Module,
-        optimizer: Optimizer,
-        device: Optional[torch.device] = None,
+            self,
+            model: nn.Module,
+            loss_fn: nn.Module,
+            optimizer: Optimizer,
+            device: Optional[torch.device] = None,
     ):
         """
         Initialize the trainer.
@@ -246,7 +316,11 @@ class VAETrainer(Trainer):
         x = x.to(self.device)  # Image batch (N,C,H,W)
         # TODO: Train a VAE on one batch.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.optimizer.zero_grad()
+        xr, z_mu, z_log_sigma2 = self.model(x)
+        loss, data_loss, kl_div_loss = self.loss_fn(x, xr, z_mu, z_log_sigma2)
+        loss.backward()
+        self.optimizer.step()
         # ========================
 
         return BatchResult(loss.item(), 1 / data_loss.item())
@@ -258,7 +332,8 @@ class VAETrainer(Trainer):
         with torch.no_grad():
             # TODO: Evaluate a VAE on one batch.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            xr, z_mu, z_log_sigma2 = self.model(x)
+            loss, data_loss, kl_div_loss = self.loss_fn(x, xr, z_mu, z_log_sigma2)
             # ========================
 
         return BatchResult(loss.item(), 1 / data_loss.item())
