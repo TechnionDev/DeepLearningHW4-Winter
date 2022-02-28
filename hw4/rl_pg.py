@@ -28,21 +28,21 @@ class PolicyNet(nn.Module):
 
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        self.layers = [
-            nn.Linear(in_features, 256),
-            nn.ReLU(),#maybe to change to LeakyReLU
-            nn.Linear(256, 256), #was nn.Linear(256, 128)
-            nn.ReLU(),
-            nn.Linear(256, out_actions)    #was nn.Linear(128, out_actions)
-        ]
-        self.model = nn.Sequential(*self.layers)   #was self.layers = nn.Sequential(*self.layers)
 
+        self.layers = [
+            nn.Linear(in_features=in_features, out_features=256),
+            nn.ReLU(),
+            nn.Linear(in_features=256, out_features=128),
+            nn.ReLU(),
+            nn.Linear(in_features=128, out_features=out_actions)
+        ]
+        self.layers = nn.Sequential(*self.layers)
         # ========================
 
     def forward(self, x):
         # TODO: Implement a simple neural net to approximate the policy.
         # ====== YOUR CODE: ======
-        action_scores = self.model(x)
+        action_scores = self.layers(x)
         # ========================
         return action_scores
 
@@ -57,12 +57,9 @@ class PolicyNet(nn.Module):
         """
         # TODO: Implement according to docstring.
         # ====== YOUR CODE: ======
-        out_actions = env.action_space.n
-        in_features = env.observation_space.shape[0]
-        net = PolicyNet(in_features, out_actions, **kw)
+        net = PolicyNet(in_features=env.observation_space.shape[0], out_actions=env.action_space.n)
         # ========================
         return net.to(device)
-
 
 class PolicyAgent(object):
     def __init__(self, env: gym.Env, p_net: nn.Module, device="cpu"):
@@ -98,9 +95,7 @@ class PolicyAgent(object):
         #  Notice that you should use p_net for *inference* only.
         # ====== YOUR CODE: ======
         with torch.no_grad():
-            res = self.p_net(self.curr_state)
-            actions_proba = nn.functional.softmax(res, dim=0)
-
+            actions_proba = nn.functional.softmax(self.p_net(self.curr_state.unsqueeze(0))[0], dim=-1).squeeze()
         # ========================
 
         return actions_proba
@@ -123,13 +118,11 @@ class PolicyAgent(object):
         # ====== YOUR CODE: ======
 
         with torch.no_grad():
-            prob = self.current_action_distribution()
             old_state = self.curr_state
-            action = torch.multinomial(prob, 1).item()
-            new_state, reward, is_done, _ = self.env.step(action)
-            self.curr_state = torch.from_numpy(new_state).float()
-            experience = Experience(state=old_state,action=action,  reward=reward, is_done=is_done)
-
+            action = torch.multinomial(self.current_action_distribution(), 1).item()
+            state, reward, is_done, _ = self.env.step(action)
+            self.curr_state = torch.from_numpy(state).float()
+            experience = Experience(action=action, state=old_state, reward=reward, is_done=is_done)
 
         # ========================
         if is_done:
@@ -138,7 +131,7 @@ class PolicyAgent(object):
 
     @classmethod
     def monitor_episode(
-        cls, env_name, p_net, monitor_dir="checkpoints/monitor", device="cpu"
+            cls, env_name, p_net, monitor_dir="checkpoints/monitor", device="cpu"
     ):
         """
         Runs a single episode with a Monitor using an specified policy network.
@@ -152,20 +145,22 @@ class PolicyAgent(object):
         """
         n_steps, reward = 0, 0.0
         with gym.wrappers.Monitor(
-            gym.make(env_name), monitor_dir, video_callable=None, force=True
+                gym.make(env_name), monitor_dir, video_callable=None, force=True
         ) as env:
             # TODO:
             #  Create an agent and play the environment for one episode
             #  based on the policy encoded in p_net.
             # ====== YOUR CODE: ======
-            agent = cls(env, p_net, device)
+
             is_done = False
+            agent = cls(env, p_net, device)
             while not is_done:
+                exp = agent.step()
+                is_done = exp.is_done
+                reward += exp.reward
                 n_steps += 1
-                experience = agent.step()
-                is_done = experience.is_done
-                reward += experience.reward
-                # was env.render(), do in need this?
+                env.render()
+
             # ========================
         return env, n_steps, reward
 
@@ -211,9 +206,8 @@ class VanillaPolicyGradientLoss(nn.Module):
         #   different episodes. So, here we'll simply average over the number
         #   of total experiences in our batch.
         # ====== YOUR CODE: ======
-        log_prob = nn.functional.log_softmax(action_scores, dim=-1)
-        prob_actions = torch.gather(log_prob, dim=1, index=batch.actions.unsqueeze(dim=-1)).squeeze()
-        loss_p = -(policy_weight * prob_actions).mean()
+        weighted_average =policy_weight * (torch.gather(torch.nn.functional.log_softmax(action_scores, dim=-1), dim=1, index=batch.actions.unsqueeze(dim=-1)).squeeze())
+        loss_p = -weighted_average.mean()
         # ========================
         return loss_p
 
@@ -232,7 +226,7 @@ class BaselinePolicyGradientLoss(VanillaPolicyGradientLoss):
         #  Use the helper methods in this class as before.
         # ====== YOUR CODE: ======
         policy_weight, baseline = self._policy_weight(batch)
-        loss_p = self._policy_loss(batch, action_scores, policy_weight - baseline.item())
+        loss_p = self._policy_loss(batch, action_scores, policy_weight - baseline)
         # ========================
         return loss_p, dict(loss_p=loss_p.item(), baseline=baseline.item())
 
@@ -292,7 +286,7 @@ class ActionEntropyLoss(nn.Module):
         #   - Use pytorch built-in softmax and log_softmax.
         #   - Calculate loss per experience and average over all of them.
         # ====== YOUR CODE: ======
-        entropy = (nn.functional.softmax(action_scores, dim=-1)*nn.functional.log_softmax(action_scores, dim=-1)).sum(dim=-1) / self.max_entropy
+        entropy = (nn.functional.softmax(action_scores, dim=-1) * nn.functional.log_softmax(action_scores, dim=-1)).sum(dim=-1) / self.max_entropy
         loss_e = entropy.mean()
         # ========================
 
@@ -302,12 +296,12 @@ class ActionEntropyLoss(nn.Module):
 
 class PolicyTrainer(object):
     def __init__(
-        self,
-        model: nn.Module,
-        optimizer: optim.Optimizer,
-        loss: Union[Iterable[nn.Module], nn.Module],
-        dataloader: DataLoader,
-        checkpoint_file=None,
+            self,
+            model: nn.Module,
+            optimizer: optim.Optimizer,
+            loss: Union[Iterable[nn.Module], nn.Module],
+            dataloader: DataLoader,
+            checkpoint_file=None,
     ):
         self.model = model
         self.optimizer = optimizer
@@ -354,11 +348,11 @@ class PolicyTrainer(object):
             self._training_data[name] = loss_list
 
     def train(
-        self,
-        target_reward: float = math.inf,
-        running_mean_len=100,
-        max_episodes=10_000,
-        post_batch_fn: Callable = None,
+            self,
+            target_reward: float = math.inf,
+            running_mean_len=100,
+            max_episodes=10_000,
+            post_batch_fn: Callable = None,
     ):
         """
         Trains a policy-based RL model.
@@ -440,18 +434,15 @@ class PolicyTrainer(object):
         #   - Backprop.
         #   - Update model parameters.
         # ====== YOUR CODE: ======
-
-        total_loss = torch.zeros(1)
-        action_scores = self.model(batch.states)
-        for loss_f in self.loss_functions:
-            loss, loss_dict = loss_f.forward(batch, action_scores)
-            loss.backward(retain_graph=True)
-            total_loss =total_loss+ loss
-            losses_dict.update(loss_dict)
-        # total_loss.backward()
+        total_loss = 0
         self.optimizer.zero_grad()
+        action_scores = self.model(batch.states)
+        for loss in self.loss_functions:
+            curr_loss, curr_dict = loss(batch, action_scores)
+            total_loss +=curr_loss
+            losses_dict.update(curr_dict)
+        total_loss.backward()
         self.optimizer.step()
-
-    # ========================
+        # ========================
 
         return total_loss, losses_dict

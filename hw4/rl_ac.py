@@ -67,7 +67,8 @@ class AACPolicyNet(nn.Module):
         """
         # TODO: Implement according to docstring.
         # ====== YOUR CODE: ======
-        net = AACPolicyNet(env.observation_space.shape[0], env.action_space.n,**kw)
+        net = AACPolicyNet(env.observation_space.shape[0], env.action_space.n)
+
 
         # ========================
         return net.to(device)
@@ -79,8 +80,8 @@ class AACPolicyAgent(PolicyAgent):
         # ====== YOUR CODE: ======
         state = self.curr_state.unsqueeze(0)
         with torch.no_grad():
-            p_net_result, _ = self.p_net(state)
-            actions_proba = nn.functional.softmax(p_net_result, dim=-1).squeeze()
+            action_scores, _ = self.p_net(state)
+            actions_proba = nn.functional.softmax(action_scores, dim=-1).squeeze()
 
         # ========================
         return actions_proba
@@ -107,6 +108,7 @@ class AACPolicyGradientLoss(VanillaPolicyGradientLoss):
         loss_v = self._value_loss(batch, state_values)
         advantage = self._policy_weight(batch, state_values)
         loss_p = self._policy_loss(batch, action_scores, advantage)
+
         # ========================
 
         loss_v *= self.delta
@@ -133,6 +135,7 @@ class AACPolicyGradientLoss(VanillaPolicyGradientLoss):
     def _value_loss(self, batch: TrainBatch, state_values: torch.Tensor):
         # TODO: Calculate the state-value loss.
         # ====== YOUR CODE: ======
-        loss_v = ((batch.q_vals - state_values) ** 2).mean()
+        loss_v = (batch.q_vals - state_values) ** 2
+        loss_v=loss_v.mean()
         # ========================
         return loss_v

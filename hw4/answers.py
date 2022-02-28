@@ -10,6 +10,7 @@ import torch
 # Part 1 answers
 
 
+
 def part1_pg_hyperparams():
     hp = dict(
         batch_size=32, gamma=0.99, beta=0.5, learn_rate=1e-3, eps=1e-8, num_workers=2,
@@ -43,7 +44,6 @@ def part1_aac_hyperparams():
     hp['batch_size'] = 8
     #hp['gamma'] = 0.99
     #hp['beta'] = 1.0
-    # delta=0.7,
     #hp['delta'] = 1.0
     #hp['learn_rate'] = 1e-3
     #hp['eps'] = 1e-8

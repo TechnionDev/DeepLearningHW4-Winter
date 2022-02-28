@@ -41,8 +41,7 @@ class Episode(object):
         # ====== YOUR CODE: ======
         qvals.append(0)
         for i in range(0, len(self.experiences)):
-            cur=gamma * qvals[-1]+self.experiences[len(self.experiences)- 1 - i].reward
-            qvals.append(cur)
+            qvals.append(self.experiences[len(self.experiences) - 1 - i].reward + gamma * qvals[-1])
         qvals.reverse()
         qvals = qvals[:-1]
         # ========================
@@ -61,11 +60,11 @@ class TrainBatch(object):
     """
 
     def __init__(
-        self,
-        states: torch.FloatTensor,
-        actions: torch.LongTensor,
-        q_vals: torch.FloatTensor,
-        total_rewards: torch.FloatTensor,
+            self,
+            states: torch.FloatTensor,
+            actions: torch.LongTensor,
+            q_vals: torch.FloatTensor,
+            total_rewards: torch.FloatTensor,
     ):
 
         assert states.shape[0] == actions.shape[0] == q_vals.shape[0]
@@ -96,22 +95,19 @@ class TrainBatch(object):
         states = []
         actions = []
         q_vals = []
-        rewards = []
+        total_rewards = []
         for episode in episodes:
             states.extend([experience.state for experience in episode.experiences])
             actions.extend([experience.action for experience in episode.experiences])
             q_vals.extend(episode.calc_qvals(gamma))
-            rewards.append(episode.total_reward)
-        #states = torch.FloatTensor(states)
-        states = torch.stack(states)
-        states=states.float()
+            total_rewards.append(episode.total_reward)
+
+        states = torch.stack(states).float()
         actions = torch.LongTensor(actions)
-        q_vals = torch.FloatTensor(q_vals)
-        rewards = torch.FloatTensor(rewards)
+        q_vals=torch.FloatTensor(q_vals)
+        total_rewards=torch.FloatTensor(total_rewards)
 
-        train_batch = TrainBatch(states, actions, q_vals, rewards)
-
-
+        train_batch = TrainBatch(states, actions, q_vals, total_rewards)
         # ========================
         return train_batch
 
@@ -170,15 +166,16 @@ class TrainBatchDataset(torch.utils.data.IterableDataset):
             #    by the agent.
             #  - Store Episodes in the curr_batch list.
             # ====== YOUR CODE: ======
-            experiences_generated = []
-            reward = 0.0
+            experiences = []
+            reward = 0
             is_done = False
+
             while not is_done:
                 experience = agent.step()
-                experiences_generated.append(experience)
                 is_done = experience.is_done
                 reward += experience.reward
-            curr_batch.append(Episode(reward, experiences_generated))
+                experiences.append(experience)
+            curr_batch.append(Episode(reward, experiences))
             # ========================
             if len(curr_batch) == self.episode_batch_size:
                 yield tuple(curr_batch)
