@@ -63,10 +63,10 @@ class Trainer(abc.ABC):
         :return: A FitResult object containing train and test losses per epoch.
         """
         actual_num_epochs = 0
-        train_loss, train_acc, test_loss, test_acc = [], [], [], []
-        print(f"device is {self.device}")
-        best_acc = None
         epochs_without_improvement = 0
+
+        train_loss, train_acc, test_loss, test_acc = [], [], [], []
+        best_acc = None
 
         checkpoint_filename = None
         if checkpoints is not None:
@@ -84,16 +84,13 @@ class Trainer(abc.ABC):
         for epoch in range(num_epochs):
             save_checkpoint = False
             verbose = False  # pass this to train/test_epoch.
-            if epoch % print_every == 0 or epoch == num_epochs - 1:
+            if print_every > 0 and (epoch % print_every == 0 or epoch == num_epochs - 1):
                 verbose = True
             self._print(f"--- EPOCH {epoch + 1}/{num_epochs} ---", verbose)
 
-            # TODO:
-            #  Train & evaluate for one epoch
+            # TODO: Train & evaluate for one epoch
             #  - Use the train/test_epoch methods.
             #  - Save losses and accuracies in the lists above.
-            #  - Implement early stopping. This is a very useful and
-            #    simple regularization technique that is highly recommended.
             # ====== YOUR CODE: ======
             actual_num_epochs = epoch
             train_result = self.train_epoch(dl_train, verbose=verbose, **kw)
@@ -102,20 +99,29 @@ class Trainer(abc.ABC):
             test_result = self.test_epoch(dl_test, verbose=verbose, **kw)
             test_loss += test_result.losses
             test_acc += [test_result.accuracy]
-
-            if best_acc is None or best_acc < test_result.accuracy:
+            # ========================
+            # TODO:
+            #  - Optional: Implement early stopping. This is a very useful and
+            #    simple regularization technique that is highly recommended.
+            #  - Optional: Implement checkpoints. You can use the save_checkpoint
+            #    method on this class to save the model to the file specified by
+            #    the checkpoints argument.
+            if best_acc is None or test_result.accuracy > best_acc:
+                # ====== YOUR CODE: ======
                 best_acc = test_result.accuracy
                 epochs_without_improvement = 0
                 save_checkpoint = True
+                # ========================
             else:
+                # ====== YOUR CODE: ======
                 epochs_without_improvement += 1
                 save_checkpoint = False
+                # ========================
+
             if early_stopping:
                 if epochs_without_improvement >= early_stopping:
                     break
-            # ========================
 
-            # Save model checkpoint if requested
             if save_checkpoint and checkpoint_filename is not None:
                 saved_state = dict(
                     best_acc=best_acc,
@@ -123,9 +129,6 @@ class Trainer(abc.ABC):
                     model_state=self.model.state_dict(),
                 )
                 torch.save(saved_state, checkpoint_filename)
-                print(
-                    f"*** Saved checkpoint {checkpoint_filename} " f"at epoch {epoch + 1}"
-                )
 
             if post_epoch_fn:
                 post_epoch_fn(epoch, train_result, test_result, verbose)

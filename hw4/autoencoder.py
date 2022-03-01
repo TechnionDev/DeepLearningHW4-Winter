@@ -20,11 +20,11 @@ class EncoderCNN(nn.Module):
         #  use BN or Dropout, etc.
         # ====== YOUR CODE: ======
         modules += [
-            nn.Conv2d(in_channels=in_channels, out_channels=128, kernel_size=5, padding=1, dilation=1),
-            nn.BatchNorm2d(num_features=128),
+            nn.Conv2d(in_channels=in_channels, out_channels=256, kernel_size=5, padding=1, dilation=1),
+            nn.BatchNorm2d(num_features=256),
             nn.Dropout2d(p=0.1),
             nn.ReLU(),
-            nn.Conv2d(in_channels=128, out_channels=512, kernel_size=5, padding=1, dilation=2, stride=2),
+            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=5, padding=1, dilation=2, stride=2),
             nn.BatchNorm2d(num_features=512),
             nn.Dropout2d(p=0.1),
             nn.ReLU(),
@@ -57,10 +57,10 @@ class DecoderCNN(nn.Module):
             nn.ConvTranspose2d(in_channels=in_channels, out_channels=512, kernel_size=5, padding=3, dilation=3, stride=2),
             nn.Dropout2d(p=0.1),
             nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=512, out_channels=128, kernel_size=5, padding=2, dilation=2),
+            nn.ConvTranspose2d(in_channels=512, out_channels=256, kernel_size=5, padding=2, dilation=2),
             nn.Dropout2d(p=0.1),
             nn.ReLU(),
-            nn.ConvTranspose2d(in_channels=128, out_channels=out_channels, kernel_size=4, padding=0, dilation=1),
+            nn.ConvTranspose2d(in_channels=256, out_channels=out_channels, kernel_size=4, padding=0, dilation=1),
         ]
         # ========================
         self.cnn = nn.Sequential(*modules)
@@ -112,10 +112,11 @@ class VAE(nn.Module):
         #     log_sigma2 (mean and log variance) of q(Z|x).
         #  2. Apply the reparametrization trick to obtain z.
         # ====== YOUR CODE: ======
-        h = self.features_encoder(x).reshape(x.shape[0], -1)
-        sample = torch.randn((h.shape[0], self.z_dim)).to(device=h.device)
-        mu = self.mu(h)
-        log_sigma2 = self.sigma2(h)
+        h = self.features_encoder(x)
+        h_reshape = h.reshape(x.shape[0], -1)
+        sample = torch.randn((h_reshape.shape[0], self.z_dim)).to(device=h_reshape.device)
+        mu = self.mu(h_reshape)
+        log_sigma2 = self.sigma2(h_reshape)
         z = mu + sample * log_sigma2
         # ========================
 
@@ -182,17 +183,13 @@ def vae_loss(x, xr, z_mu, z_log_sigma2, x_sigma2):
     #  1. The covariance matrix of the posterior is diagonal.
     #  2. You need to average over the batch dimension.
     # ====== YOUR CODE: ======
+    logDetVar = torch.sum(z_log_sigma2, dim=-1)
+    traceVar = torch.sum(torch.exp(z_log_sigma2), dim=-1)
+    kldivLoss = (torch.norm(z_mu, 2, -1) ** 2 + traceVar - z_mu.shape[1] - logDetVar).mean()
     dx = math.prod(x.shape[1:])
-    dz = z_mu.shape[1]
     dist = (x - xr).reshape(x.shape[0], -1)
-    data_loss = ((torch.norm(dist, p=2, dim=-1)) ** 2 / (dx * x_sigma2))
-    log_det_var = torch.sum(z_log_sigma2, dim=-1)
-    trace_var = torch.sum(torch.exp(z_log_sigma2), dim=-1)
-    kldiv_loss = torch.norm(z_mu, 2, -1) ** 2 + trace_var - dz - log_det_var
-
-    data_loss = data_loss.mean()
-    kldiv_loss = kldiv_loss.mean()
-    loss = (data_loss + kldiv_loss)
+    dataLoss = ((torch.norm(dist, p=2, dim=-1)) ** 2 / (dx * x_sigma2)).mean()
+    loss = dataLoss + kldivLoss
     # ========================
 
-    return loss, data_loss, kldiv_loss
+    return loss, dataLoss, kldivLoss
