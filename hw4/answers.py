@@ -198,30 +198,22 @@ and when training the generator we once again need thous gradients - in order to
 
 part3_q2 = r"""
 **Your answer:**
-1. 
-
-
 1. During training, both the generator and the discriminator are being trained together.
 This entails that the discriminator is also being trained and improved "as we go" which means that the loss
 of the generator at a certain point has much less meaning by itself.
-2. When the loss of the discriminator remains approximately constant with the loss of the generator
-decreasing, it means that the generator learned to create examples that directly cause the discrimnator to always 
-provide a false prediction, therefore, leading to no gradients that allow the discriminator to learn, while the generator
-is still improving and getting better at fooling the atrophied discriminator. this phenomenon is called 
-Gradient Collapse.
+2. the meaning of this is that the generator has learned to create example that causes the discrimnator to always 
+provide a false prediction. and becuse of this, there is no gradients that allow the discriminator to learn, while the generator
+is still improving and getting better.
+ 
 """
 
 part3_q3 = r"""
 **Your answer:**
-
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+we can see that in vae the result looks more like the samples that were given to the model. when in the gan model the 
+results were more abstract then accurate duplicates of the original data set. this can be explained by the way the gan model is designed -
+when the generator learns to overcome the discriminator its probebly learns more general features of the shape than the
+ exact replica of the original dataset - what generates a less similar result of the image. another key point is that the
+ time that takes for the gan model to train is longer. 
 """
 
 # ==============
