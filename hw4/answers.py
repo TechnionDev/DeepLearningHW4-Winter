@@ -190,27 +190,25 @@ def part3_gan_hyperparams():
 part3_q1 = r"""
 **Your answer:**
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+we need to do so when we are training the discriminator. when we do so, we wouldn't want that the calculations of the gradients
+would be done on the generator - if it would happen, this will change the parameters of the generator for the worse - 
+this would happen du to the fact that in order to decrese the loss of the discriminator we need worsen the generator.
+and when training the generator we once again need thous gradients - in order to train the generator.
 """
 
 part3_q2 = r"""
 **Your answer:**
+1. 
 
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+1. During training, both the generator and the discriminator are being trained together.
+This entails that the discriminator is also being trained and improved "as we go" which means that the loss
+of the generator at a certain point has much less meaning by itself.
+2. When the loss of the discriminator remains approximately constant with the loss of the generator
+decreasing, it means that the generator learned to create examples that directly cause the discrimnator to always 
+provide a false prediction, therefore, leading to no gradients that allow the discriminator to learn, while the generator
+is still improving and getting better at fooling the atrophied discriminator. this phenomenon is called 
+Gradient Collapse.
 """
 
 part3_q3 = r"""
