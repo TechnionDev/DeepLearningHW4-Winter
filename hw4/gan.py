@@ -21,29 +21,32 @@ class Discriminator(nn.Module):
         #  flatten the features.
         # ====== YOUR CODE: ======
         modules = [
-            nn.Conv2d(in_size[0], 64, kernel_size=5),
+            nn.Conv2d(in_size[0], 32, kernel_size=5),
             nn.ReLU(),
-            nn.Conv2d(64, 256, kernel_size=5, padding=2, stride=2),
+
+            nn.Conv2d(32, 128, kernel_size=5, padding=2, stride=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.1),
+
+            nn.Conv2d(128, 256, kernel_size=5, padding=2, stride=2),
             nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.Conv2d(256, 512, kernel_size=5, padding=2, stride=2),
-            nn.BatchNorm2d(512),
-            nn.Dropout2d(p=0.1),
-            nn.ReLU(),
-            nn.Conv2d(512, 512, kernel_size=5, padding=6, stride=2),
-            nn.BatchNorm2d(512),
-            nn.Dropout2d(p=0.1),
-            nn.ReLU(),
-            nn.Conv2d(512, 512, kernel_size=5, padding=2, stride=2),
-            nn.BatchNorm2d(512),
-            nn.Dropout2d(p=0.1),
-            nn.ReLU(),
-            nn.Conv2d(512, 512, kernel_size=5, padding=7, stride=2),
-            nn.BatchNorm2d(512),
-            nn.Dropout2d(p=0.1),
-            nn.ReLU(),
-            nn.Conv2d(512, 1, kernel_size=8),
-            nn.ReLU(),
+            nn.Dropout2d(p=0.),
+            nn.Tanh(),
+
+            nn.Conv2d(256, 256, kernel_size=5, padding=6, stride=2),
+            nn.BatchNorm2d(256),
+            nn.Tanh(),
+
+            nn.Conv2d(256, 256, kernel_size=5, padding=2, stride=2),
+            nn.BatchNorm2d(256),
+
+            nn.LeakyReLU(0.1),
+            nn.Conv2d(256, 256, kernel_size=5, padding=7, stride=2),
+            nn.BatchNorm2d(256),
+
+            nn.LeakyReLU(0.1),
+            nn.Conv2d(256, 1, kernel_size=8),
+            nn.LeakyReLU(0.1),
         ]
         self.cnn = nn.Sequential(*modules)
 
@@ -83,35 +86,44 @@ class Generator(nn.Module):
         #  section or implement something new.
         #  You can assume a fixed image size.
         # ====== YOUR CODE: ======
+        in_c = int(z_dim / (featuremap_size ** 2))
         modules = [
             nn.Upsample(scale_factor=2, mode="bicubic"),
 
-            nn.Conv2d(int(z_dim / (self.featuremap_size ** 2)), 256, kernel_size=5, padding=2),
-            nn.Dropout2d(0.1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.Conv2d(256, 256, kernel_size=5, padding=2),
-            nn.BatchNorm2d(256),
-            nn.ReLU(),
-            nn.Upsample(scale_factor=2, mode="bicubic"),
-            nn.Conv2d(256, 128, kernel_size=5, padding=2, dilation=1, stride=1),
-            nn.Dropout2d(0.1),
+            nn.Conv2d(in_c, 128, kernel_size=5, padding=2),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(128),
-            nn.ReLU(),
+            nn.LeakyReLU(0.1),
+
+            nn.Conv2d(128, 128, kernel_size=5, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.1),
+
+            nn.Upsample(scale_factor=2, mode="bicubic"),
+
             nn.Conv2d(128, 64, kernel_size=5, padding=2, dilation=1, stride=1),
-            nn.Dropout2d(0.1),
+            nn.Dropout2d(0.2),
             nn.BatchNorm2d(64),
-            nn.ReLU(),
+            nn.LeakyReLU(0.1),
+
+            nn.Conv2d(64, 64, kernel_size=5, padding=2, dilation=1, stride=1),
+            nn.Dropout2d(0.2),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.1),
+
+            nn.Upsample(scale_factor=2, mode="bicubic"),
+
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
+            nn.LeakyReLU(0.1),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
+            nn.LeakyReLU(0.1),
+
             nn.Upsample(scale_factor=2, mode="bicubic"),
             nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.ReLU(),
-            nn.Upsample(scale_factor=2, mode="bicubic"),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.ReLU(),
+            nn.LeakyReLU(0.1),
             nn.Conv2d(64, out_channels, kernel_size=5, padding=2, dilation=1),
-            nn.ReLU(),
+            nn.Tanh()
+
         ]
         self.cnn = nn.Sequential(*modules)
         # ========================

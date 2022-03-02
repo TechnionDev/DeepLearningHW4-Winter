@@ -163,21 +163,21 @@ PART3_CUSTOM_DATA_URL = None
 
 def part3_gan_hyperparams():
     hypers = dict(
-        batch_size=8,
-        z_dim=16,
+        batch_size=16,
+        z_dim=32,
         data_label=1,
-        label_noise=0.08,
+        label_noise=0.05,
         discriminator_optimizer=dict(
             type="Adam",  # Any name in nn.optim like SGD, Adam
-            lr=0.001,
+            lr=0.0001,
             # You an add extra args for the optimizer here
-            betas=(0.5, 0.999),
+            betas=(0.5, 0.9),
         ),
         generator_optimizer=dict(
             type="Adam",  # Any name in nn.optim like SGD, Adam
-            lr=0.0005,
+            lr=0.0001,
             # You an add extra args for the optimizer here
-            betas=(0.5, 0.999),
+            betas=(0.5, 0.9),
         ),
     )
     # TODO: Tweak the hyperparameters to train your GAN.
