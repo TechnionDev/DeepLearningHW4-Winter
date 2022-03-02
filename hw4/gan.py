@@ -21,32 +21,29 @@ class Discriminator(nn.Module):
         #  flatten the features.
         # ====== YOUR CODE: ======
         modules = [
-            nn.Conv2d(in_size[0], 32, kernel_size=5),
+            nn.Conv2d(in_size[0], 64, kernel_size=5),
             nn.ReLU(),
-
-            nn.Conv2d(32, 128, kernel_size=5, padding=2, stride=2),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.1),
-
-            nn.Conv2d(128, 256, kernel_size=5, padding=2, stride=2),
+            nn.Conv2d(64, 256, kernel_size=5, padding=2, stride=2),
             nn.BatchNorm2d(256),
-            nn.Dropout2d(p=0.),
-            nn.Tanh(),
-
-            nn.Conv2d(256, 256, kernel_size=5, padding=6, stride=2),
-            nn.BatchNorm2d(256),
-            nn.Tanh(),
-
-            nn.Conv2d(256, 256, kernel_size=5, padding=2, stride=2),
-            nn.BatchNorm2d(256),
-
-            nn.LeakyReLU(0.1),
-            nn.Conv2d(256, 256, kernel_size=5, padding=7, stride=2),
-            nn.BatchNorm2d(256),
-
-            nn.LeakyReLU(0.1),
-            nn.Conv2d(256, 1, kernel_size=8),
-            nn.LeakyReLU(0.1),
+            nn.ReLU(),
+            nn.Conv2d(256, 512, kernel_size=5, padding=2, stride=2),
+            nn.BatchNorm2d(512),
+            nn.Dropout2d(p=0.1),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=5, padding=6, stride=2),
+            nn.BatchNorm2d(512),
+            nn.Dropout2d(p=0.1),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=5, padding=2, stride=2),
+            nn.BatchNorm2d(512),
+            nn.Dropout2d(p=0.1),
+            nn.ReLU(),
+            nn.Conv2d(512, 512, kernel_size=5, padding=7, stride=2),
+            nn.BatchNorm2d(512),
+            nn.Dropout2d(p=0.1),
+            nn.ReLU(),
+            nn.Conv2d(512, 1, kernel_size=8),
+            nn.ReLU(),
         ]
         self.cnn = nn.Sequential(*modules)
 
@@ -62,9 +59,11 @@ class Discriminator(nn.Module):
         #  No need to apply sigmoid to obtain probability - we'll combine it
         #  with the loss due to improved numerical stability.
         # ====== YOUR CODE: ======
-        y = self.cnn(x).reshape((x.shape[0], 1))
+        X_shape = x.shape[0]
+        y = self.cnn(x)
+        y_newshape = y.reshape((X_shape, 1))
         # ========================
-        return y
+        return y_newshape
 
 
 class Generator(nn.Module):
@@ -77,52 +76,42 @@ class Generator(nn.Module):
         """
         super().__init__()
         self.z_dim = z_dim
+        self.featuremap_size = featuremap_size
 
         # TODO: Create the generator model layers.
         #  To combine image features you can use the DecoderCNN from the VAE
         #  section or implement something new.
         #  You can assume a fixed image size.
         # ====== YOUR CODE: ======
-        self.featuremap_size = featuremap_size
-
-        in_c = int(z_dim / (featuremap_size ** 2))
         modules = [
             nn.Upsample(scale_factor=2, mode="bicubic"),
 
-            nn.Conv2d(in_c, 128, kernel_size=5, padding=2),
-            nn.Dropout2d(0.2),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.1),
-
-            nn.Conv2d(128, 128, kernel_size=5, padding=2),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.1),
-
+            nn.Conv2d(int(z_dim / (self.featuremap_size ** 2)), 256, kernel_size=5, padding=2),
+            nn.Dropout2d(0.1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.Conv2d(256, 256, kernel_size=5, padding=2),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
             nn.Upsample(scale_factor=2, mode="bicubic"),
-
+            nn.Conv2d(256, 128, kernel_size=5, padding=2, dilation=1, stride=1),
+            nn.Dropout2d(0.1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
             nn.Conv2d(128, 64, kernel_size=5, padding=2, dilation=1, stride=1),
-            nn.Dropout2d(0.2),
+            nn.Dropout2d(0.1),
             nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.1),
-
-            nn.Conv2d(64, 64, kernel_size=5, padding=2, dilation=1, stride=1),
-            nn.Dropout2d(0.2),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.1),
-
-            nn.Upsample(scale_factor=2, mode="bicubic"),
-
-            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.LeakyReLU(0.1),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.LeakyReLU(0.1),
-
+            nn.ReLU(),
             nn.Upsample(scale_factor=2, mode="bicubic"),
             nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
-            nn.LeakyReLU(0.1),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
+            nn.ReLU(),
+            nn.Upsample(scale_factor=2, mode="bicubic"),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1, dilation=1),
+            nn.ReLU(),
             nn.Conv2d(64, out_channels, kernel_size=5, padding=2, dilation=1),
-            nn.Tanh()
-
+            nn.ReLU(),
         ]
         self.cnn = nn.Sequential(*modules)
         # ========================
@@ -142,12 +131,11 @@ class Generator(nn.Module):
         #  Don't use a loop.
         # ====== YOUR CODE: ======
         sample = torch.randn(n, self.z_dim).to(device=device)
-
-        if not with_grad:
+        if with_grad:
+            samples = self.forward(sample)
+        else:
             with torch.no_grad():
                 samples = self.forward(sample)
-        else:
-            samples = self.forward(sample)
         # ========================
         return samples
 
@@ -161,8 +149,8 @@ class Generator(nn.Module):
         #  Don't forget to make sure the output instances have the same
         #  dynamic range as the original (real) images.
         # ====== YOUR CODE: ======
-        z = z.reshape(z.shape[0], -1, self.featuremap_size, self.featuremap_size)
-        x = self.cnn(z)
+        z_reshape = z.reshape(z.shape[0], -1, self.featuremap_size, self.featuremap_size)
+        x = self.cnn(z_reshape)
         # ========================
         return x
 
@@ -188,15 +176,14 @@ def discriminator_loss_fn(y_data, y_generated, data_label=0, label_noise=0.0):
     #  generated labels.
     #  See pytorch's BCEWithLogitsLoss for a numerically stable implementation.
     # ====== YOUR CODE: ======
-    loss_fn = torch.nn.BCEWithLogitsLoss(reduction="mean")
+    BCEWLoss = torch.nn.BCEWithLogitsLoss(reduction="mean")
 
-    data_label_targets = torch.ones_like(y_data) * data_label
-    noise_mat = torch.rand_like(y_data) * label_noise - label_noise / 2
-    loss_data = loss_fn(y_data, data_label_targets + noise_mat)
-
-    generated_label_target = torch.ones_like(y_generated) * (1 - data_label)
-    noise_mat_generated = torch.rand_like(y_generated) * label_noise - label_noise / 2
-    loss_generated = loss_fn(y_generated, (generated_label_target + noise_mat_generated))
+    noise = torch.rand_like(y_data) * label_noise - label_noise / 2
+    labelDataTargets = torch.ones_like(y_data) * data_label
+    loss_data = BCEWLoss(y_data, labelDataTargets + noise)
+    noiseGenerated = torch.rand_like(y_generated) * label_noise - label_noise / 2
+    labelGeneratedTargets = torch.ones_like(y_generated) * (1 - data_label)
+    loss_generated = BCEWLoss(y_generated, (labelGeneratedTargets + noiseGenerated))
     # ========================
     return loss_data + loss_generated
 
@@ -217,21 +204,21 @@ def generator_loss_fn(y_generated, data_label=0):
     #  Think about what you need to compare the input to, in order to
     #  formulate the loss in terms of Binary Cross Entropy.
     # ====== YOUR CODE: ======
-    loss_fn = torch.nn.BCEWithLogitsLoss(reduction="mean")
-    loss_data_weights = torch.ones_like(y_generated) * data_label
-    loss = loss_fn(y_generated, loss_data_weights)
+    BCEWLoss = torch.nn.BCEWithLogitsLoss(reduction="mean")
+    DataLossWeights = torch.ones_like(y_generated) * data_label
+    loss = BCEWLoss(y_generated, DataLossWeights)
     # ========================
     return loss
 
 
 def train_batch(
-    dsc_model: Discriminator,
-    gen_model: Generator,
-    dsc_loss_fn: Callable,
-    gen_loss_fn: Callable,
-    dsc_optimizer: Optimizer,
-    gen_optimizer: Optimizer,
-    x_data: Tensor,
+        dsc_model: Discriminator,
+        gen_model: Generator,
+        dsc_loss_fn: Callable,
+        gen_loss_fn: Callable,
+        dsc_optimizer: Optimizer,
+        gen_optimizer: Optimizer,
+        x_data: Tensor,
 ):
     """
     Trains a GAN for over one batch, updating both the discriminator and
@@ -245,10 +232,10 @@ def train_batch(
     #  3. Update discriminator parameters
     # ====== YOUR CODE: ======
     sample = gen_model.sample(x_data.shape[0], with_grad=False)
-    dsc_optimizer.zero_grad()
     gen_optimizer.zero_grad()
-    dsc_gen_out = dsc_model(sample)
+    dsc_optimizer.zero_grad()
     dsc_real_out = dsc_model(x_data)
+    dsc_gen_out = dsc_model(sample)
     dsc_loss = dsc_loss_fn(dsc_real_out, dsc_gen_out)
     dsc_loss.backward()
     dsc_optimizer.step()

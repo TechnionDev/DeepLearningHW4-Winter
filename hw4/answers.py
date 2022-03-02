@@ -170,14 +170,14 @@ def part3_gan_hyperparams():
         discriminator_optimizer=dict(
             type="Adam",  # Any name in nn.optim like SGD, Adam
             lr=0.001,
-            betas=(0.5, 0.999),
             # You an add extra args for the optimizer here
+            betas=(0.5, 0.999),
         ),
         generator_optimizer=dict(
             type="Adam",  # Any name in nn.optim like SGD, Adam
             lr=0.0005,
-            betas=(0.5, 0.999),
             # You an add extra args for the optimizer here
+            betas=(0.5, 0.999),
         ),
     )
     # TODO: Tweak the hyperparameters to train your GAN.
