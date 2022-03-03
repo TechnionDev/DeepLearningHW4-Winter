@@ -19,10 +19,6 @@ def part1_pg_hyperparams():
     #  You can also add new ones if you need them for your model's __init__.
     # ====== YOUR CODE: ======
     hp['batch_size'] = 16
-    #hp['gamma'] = 0.99
-    #hp['beta'] = 0.5
-    #hp['learn_rate'] = 1e-3
-    #hp['eps'] = 1e-8
     hp['num_workers'] = 0
     # ========================
     return hp
@@ -42,11 +38,6 @@ def part1_aac_hyperparams():
     #   them for your model implementation.
     # ====== YOUR CODE: ======
     hp['batch_size'] = 8
-    #hp['gamma'] = 0.99
-    #hp['beta'] = 1.0
-    #hp['delta'] = 1.0
-    #hp['learn_rate'] = 1e-3
-    #hp['eps'] = 1e-8
     hp['num_workers'] = 0
     # ========================
     return hp
@@ -55,27 +46,31 @@ def part1_aac_hyperparams():
 part1_q1 = r"""
 **Your answer:**
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+By removing dependencies and reducing the variance of the policy gradient, we sub the average expected reward from the current state.
+When we subtract the baseline ,the remain is the advantage, we change the rewards to a relative value, measuring how successful a current action is, but not adding importance to the absolute value.
+With baseline value, variance is much lower than without. With baseline value we measure the amount of how much an action is better by comparing it to its opposite actions. In that way, 
+we increase the different we have between bad and good actions. (that gives lower variance).
+An example where it helps us is example that the scores will be positive. 
+Increasing the scores of each action is the only way to change the probabilities of the results.
+With baseline we will get a distribution where, without a baseline, we will get a distribution where entropy is very low, 
+while with a baseline, the distribution will be nearly equal. However, in that way the better action will be rewarded.
 
 """
 
 
 part1_q2 = r"""
-**Your answer:**
+
+$v_\pi(s) = q_\pi(s,a) - advantage$, when advantage says the amount of how much an action is better by comparing it to its opposite actions.
+q is the value of the state when we choose a specific action, and v is the expectation value of the state when we consider all of the possible action.
+The critic produces a score to see which action he decides is most advantageous, and forces the player to go that route.
+q-values let us see which action leads to better actions afterwards, by using the history of those q values. 
+(q-values approximate the environment that the critic uses to see what actions are better)
+We want that action that is better will get a bigger weight,differences between q and v depend on how good the action is 
+(better action means a bigger difference between q and v; vice versa). 
 
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+
+
 
 """
 
@@ -83,13 +78,27 @@ An equation: $e^{i\pi} -1 = 0$
 part1_q3 = r"""
 **Your answer:**
 
+1.
+Loss_p:
+By using baseline loss, the policy variance is very little because the graph is almost around zero. in that way it makes the loss of th function to have just a tiny effect.
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+Baseline:
+As can be seen, entropy loss does not affect the baseline loss graph, and we can see that both of them are performing almost identically.
+We can see that at some point the spg falls (maybe the entropy damages the baseline and therefore damaging performance)
+
+loss_e: 
+we get an entropy loss that is lower by combining baseline and entropy.
+
+Mean reward:
+we can see that the entropy and non entropy results are almost identical, some std going both ways, and the baseline graphs are becoming better.
+
+
+2.The actor critic graph trains very quickly to be at a very high performance point,
+ but has some variance and noise. We can see in the Loss_P graph that we reach to a point and stay almost stable (to a positive policy loss). 
+ In our opinion, this might suggest that the policy route we took is a good one.
+ We get the best entropy loss and get a better mean rewards with good results.
+ We believe that the more periods the better net we get.
+
 
 """
 
@@ -224,7 +233,15 @@ when the generator learns to overcome the discriminator its probebly learns more
 # ==============
 
 
+
 def part4_affine_backward(ctx, grad_output):
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    x, w, b = ctx.saved_tensors
+
+    dx = 0.5 * torch.matmul(grad_output, w)
+    dw = 0.5 * torch.matmul(grad_output.T, x)
+    db = torch.sum(grad_output, axis=0)
     # ========================
+
+
+    return dx, dw, db
