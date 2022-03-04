@@ -19,24 +19,31 @@ class AACPolicyNet(nn.Module):
         #  Implement a dual-head neural net to approximate both the
         #  policy and value. You can have a common base part, or not.
         # ====== YOUR CODE: ======
-        self.policy = [
-            nn.Linear(in_features, 256),
+        layers = [
+            nn.Linear(in_features,64),
             nn.ReLU(),
-            nn.Linear(256, 64),
+            nn.Linear(64,64),
             nn.ReLU(),
-            nn.Linear(64, out_actions),
+            nn.Linear(64,64),
             nn.ReLU(),
+            nn.Linear(64,out_actions)
         ]
-        self.value = [
-            nn.Linear(in_features, 256),
+
+        self.policy = nn.Sequential(*layers)
+
+
+        layers = [
+            nn.Linear(in_features,64),
             nn.ReLU(),
-            nn.Linear(256, 64),
+            nn.Linear(64,64),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Linear(64,64),
             nn.ReLU(),
+            nn.Linear(64,1)
         ]
-        self.policy = nn.Sequential(*self.policy)
-        self.value = nn.Sequential(*self.value)
+
+
+        self.value = nn.Sequential(*layers)
         # ========================
 
     def forward(self, x):

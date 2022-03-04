@@ -38,6 +38,7 @@ def part1_aac_hyperparams():
     #   them for your model implementation.
     # ====== YOUR CODE: ======
     hp['batch_size'] = 8
+    hp['beta'] = 0.5
     hp['num_workers'] = 0
     # ========================
     return hp
