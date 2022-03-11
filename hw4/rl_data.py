@@ -96,6 +96,7 @@ class TrainBatch(object):
         actions = []
         q_vals = []
         total_rewards = []
+
         for episode in episodes:
             states.extend([experience.state for experience in episode.experiences])
             actions.extend([experience.action for experience in episode.experiences])
@@ -167,7 +168,7 @@ class TrainBatchDataset(torch.utils.data.IterableDataset):
             #  - Store Episodes in the curr_batch list.
             # ====== YOUR CODE: ======
             experiences = []
-            reward = 0
+            reward = 0.0
             is_done = False
 
             while not is_done:
